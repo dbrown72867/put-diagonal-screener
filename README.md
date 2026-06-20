@@ -18,14 +18,13 @@ entry criteria using live Yahoo Finance data.
 **Not yet included / needs your broker to verify before trading:**
 delta-based strike selection, strike width ≤ $7, net theta, net debit
 as % of premium. These need real-time greeks from a broker feed
-(Yahoo doesn't reliably provide delta/theta) — see `put_diagonal_scanner.py`
+(Yahoo doesn't reliably provide delta/theta) — see `put_diagonal_scanner_broker_template.py`
 from earlier in this project for that logic, ready to wire to TastyTrade
 or similar once you have an account with API access.
 
 ## Setup
 
 ```bash
-cd app
 pip install -r requirements.txt
 python server.py
 ```
