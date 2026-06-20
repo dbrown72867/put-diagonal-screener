@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagonal Screener</title>
+<style>
+  :root {
+    --bg: #0c0f0d;
+    --panel: #141815;
+    --line: #232923;
+    --text: #e8ebe6;
+    --text-dim: #8a948b;
+    --pass: #5fb87a;
+    --fail: #c4584a;
+    --missing: #c9a23e;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    --sans: "IBM Plex Sans", -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    margin: 0;
+    padding: 32px;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+
+  header { margin-bottom: 28px; border-bottom: 1px solid var(--line); padding-bottom: 20px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 0 0 6px 0;
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.01em;
+  }
+  .sub { color: var(--text-dim); font-size: 14px; max-width: 640px; line-height: 1.5; }
+
+  .pass-count-badge {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    background: rgba(95, 184, 122, 0.1);
+    border: 1px solid rgba(95, 184, 122, 0.3);
+    border-radius: 4px;
+    padding: 6px 14px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .pass-count-badge #passCountNumber {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--pass);
+  }
+  .pass-count-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+
+  .data-note {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--missing);
+    background: rgba(201, 162, 62, 0.08);
+    border: 1px solid rgba(201, 162, 62, 0.25);
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin-top: 16px;
+    line-height: 1.5;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    margin: 24px 0;
+  }
+  textarea {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 12px 14px;
+    border-radius: 4px;
+    resize: vertical;
+    min-height: 44px;
+  }
+  textarea:focus { outline: 1px solid var(--text-dim); }
+
+  button {
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 0 22px;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button:hover { opacity: 0.85; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .legend {
+    display: flex;
+    gap: 18px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .dot.pass { background: var(--pass); }
+  .dot.fail { background: var(--fail); }
+  .dot.missing { background: var(--missing); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+    font-weight: 500;
+  }
+  tbody td {
+    padding: 10px 10px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+  }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .symbol { font-weight: 700; font-family: var(--sans); }
+  .status-pass { color: var(--pass); font-weight: 600; }
+  .status-fail { color: var(--text-dim); }
+  .check-icon { font-size: 13px; }
+  .check-pass { color: var(--pass); }
+  .check-fail { color: var(--fail); }
+  .check-missing { color: var(--missing); }
+  .error-row td { color: var(--fail); font-style: italic; }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  details { margin-top: 4px; }
+  summary { cursor: pointer; color: var(--text-dim); font-size: 11px; font-family: var(--mono); }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px 16px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .scan-meta { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 12px; }
+
+  .symbol-link { color: var(--text); text-decoration: none; border-bottom: 1px dotted var(--text-dim); }
+  .symbol-link:hover { color: var(--pass); border-bottom-color: var(--pass); }
+
+  .detail-link {
+    display: inline-block;
+    margin-top: 8px;
+    color: var(--pass);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .detail-link:hover { text-decoration: underline; }
+
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 40px 20px;
+  }
+  .modal-backdrop.open { display: flex; }
+
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    max-width: 880px;
+    width: 100%;
+    padding: 28px;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 16px;
+  }
+  .modal-title { font-size: 22px; font-weight: 700; }
+  .modal-close {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0;
+  }
+  .modal-close:hover { color: var(--text); border-color: var(--text-dim); }
+
+  .modal-section { margin-bottom: 24px; }
+  .modal-section-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend-line { display: inline-block; width: 14px; height: 2px; }
+
+  .criteria-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .criteria-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); font-family: var(--mono); }
+  .criteria-table td:first-child { color: var(--text-dim); }
+
+  .modal-loading { text-align: center; padding: 60px; color: var(--text-dim); font-family: var(--mono); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Local screening tool — not investment advice</p>
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+      <h1 style="margin:0 0 8px 0;">Put Diagonal Candidate Screener</h1>
+      <div id="passCountBadge" class="pass-count-badge" style="display:none;">
+        <span id="passCountNumber">0</span>
+        <span class="pass-count-label">passed</span>
+      </div>
+    </div>
+    <p class="sub">Screens a watchlist against your entry criteria: RSI oversold, price above the 50-day SMA, prior bounce off the lower Bollinger Band, IV above 50, front-month IV above back-month IV, and average volume above 1M shares.</p>
+    <div class="data-note">
+      ⚠ Price/volume/technical fields are computed live from Yahoo Finance OHLCV data.
+      IV, term structure, and bid/ask spread come from Yahoo's options chain, which is
+      often thin, delayed, or missing for less-liquid names — treat those fields as rough
+      estimates and verify against your broker before acting on anything here.
+    </div>
+  </header>
+
+  <div class="input-row">
+    <button id="scanSp500Btn" onclick="runScanSP500()">Scan full S&amp;P 500</button>
+    <span style="color: var(--text-dim); font-family: var(--mono); font-size: 12px; align-self: center;">~500 tickers, takes a few minutes — or scan a custom list below</span>
+  </div>
+  <div class="input-row">
+    <textarea id="symbols" placeholder="Optional: paste your own tickers instead, comma or space separated — e.g. AAPL, MSFT, NVDA, AMD"></textarea>
+    <button id="scanBtn" onclick="runScan()">Scan list</button>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot pass"></span> Pass</span>
+    <span><span class="dot fail"></span> Fail</span>
+    <span><span class="dot missing"></span> No data</span>
+  </div>
+
+  <div id="results">
+    <div class="empty-state">Paste tickers above and click Scan to begin.</div>
+  </div>
+
+</div>
+
+<div id="modalBackdrop" class="modal-backdrop" onclick="if(event.target===this) closeDetail();">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modalTitle">—</div>
+        <div class="scan-meta" id="modalSubtitle" style="margin-bottom:0;"></div>
+      </div>
+      <button class="modal-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div id="modalBody"><div class="modal-loading">Loading…</div></div>
+  </div>
+</div>
+
+<script>
+const CHECK_LABELS = {
+  rsi_oversold: "RSI ≤ 40",
+  above_50sma: "Px > 50 SMA",
+  uptrend: "Uptrend",
+  bollinger_bounce_history: "BB Bounce",
+  fib_bounce_history: "Fib Bounce",
+  iv_above_50: "IV > 50",
+  term_structure_backwardation: "IV Backwardation",
+  volume_above_min: "Vol > 1M",
+  bid_ask_tight: "Tight B/A",
+  analyst_sentiment: "Analyst ≥75% Buy",
+};
+
+function checkIcon(value) {
+  if (value === true) return '<span class="check-icon check-pass">●</span>';
+  if (value === false) return '<span class="check-icon check-fail">●</span>';
+  return '<span class="check-icon check-missing">●</span>';
+}
+
+async function runScan() {
+  const raw = document.getElementById('symbols').value;
+  const symbols = raw.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+  const resultsEl = document.getElementById('results');
+  const btn = document.getElementById('scanBtn');
+
+  if (symbols.length === 0) {
+    resultsEl.innerHTML = '<div class="empty-state">Enter at least one ticker.</div>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Scanning…";
+  resultsEl.innerHTML = '<div class="empty-state">Fetching data from Yahoo Finance — this can take a moment per symbol…</div>';
+
+  try {
+    const resp = await fetch('/api/screen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbols })
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      resultsEl.innerHTML = `<div class="empty-state">${data.error}</div>`;
+      return;
+    }
+
+    renderResults(data.results, data.scanned_at, data.total_screened, data.total_shown);
+  } catch (e) {
+    resultsEl.innerHTML = `<div class="empty-state">Request failed: ${e.message}. Is the server running?</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Scan list";
+  }
+}
+
+async function runScanSP500() {
+  const resultsEl = document.getElementById('results');
+  const btn = document.getElementById('scanSp500Btn');
+
+  btn.disabled = true;
+  btn.textContent = "Scanning…";
+  resultsEl.innerHTML = '<div class="empty-state">Scanning the full S&amp;P 500 against Yahoo Finance — this typically takes a few minutes for ~500 symbols. Leave this tab open.</div>';
+
+  try {
+    const resp = await fetch('/api/screen-sp500', { method: 'POST' });
+    const data = await resp.json();
+
+    if (data.error) {
+      resultsEl.innerHTML = `<div class="empty-state">${data.error}</div>`;
+      return;
+    }
+
+    renderResults(data.results, data.scanned_at, data.total_screened, data.total_shown);
+    const note = document.createElement('div');
+    note.className = 'scan-meta';
+    note.style.marginTop = '8px';
+    note.textContent = `Universe: ${data.universe_count} tickers (${data.universe_source === 'live' ? 'fetched live from GitHub' : 'built-in snapshot, GitHub fetch unavailable'})`;
+    resultsEl.prepend(note);
+  } catch (e) {
+    resultsEl.innerHTML = `<div class="empty-state">Request failed: ${e.message}. Is the server running?</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Scan full S&P 500";
+  }
+}
+
+function renderResults(results, scannedAt, totalScreened, totalShown) {
+  const resultsEl = document.getElementById('results');
+
+  // Update the top-of-page pass-count badge. Prefer the server-reported
+  // total_shown (accurate even when results were filtered server-side);
+  // fall back to counting the results array itself if that's not present.
+  const passCount = (totalShown !== undefined) ? totalShown : results.filter(r => r.passed).length;
+  const badge = document.getElementById('passCountBadge');
+  document.getElementById('passCountNumber').textContent = passCount;
+  badge.style.display = 'flex';
+
+  const summaryText = (totalScreened !== undefined)
+    ? `${totalScreened} screened · ${totalShown} met 8 of 10 criteria · ${new Date(scannedAt).toLocaleTimeString()}`
+    : `${results.length} shown · ${new Date(scannedAt).toLocaleTimeString()}`;
+
+  let html = `<div class="scan-meta">${summaryText}</div>`;
+
+  if (results.length === 0) {
+    html += '<div class="empty-state">No tickers met 8 of 10 criteria this scan.</div>';
+    resultsEl.innerHTML = html;
+    return;
+  }
+
+  html += '<table><thead><tr><th>Symbol</th><th>Last</th><th>Status</th>';
+  for (const key in CHECK_LABELS) html += `<th>${CHECK_LABELS[key]}</th>`;
+  html += '</tr></thead><tbody>';
+
+  // Sort priority:
+  //   1. Overall pass (passing stocks float above non-passing/error rows)
+  //   2. Within that, prioritize stocks passing RSI, then Bollinger Bounce,
+  //      then Fib Bounce, then Uptrend, in that order - each acts as its
+  //      own tiebreaker tier; criteria not in this list don't affect order.
+  //   3. Symbol, alphabetically, as the final tiebreaker.
+  const PRIORITY_CHECKS = ['rsi_oversold', 'bollinger_bounce_history', 'fib_bounce_history', 'uptrend'];
+
+  function priorityKey(r) {
+    // Build a string like "1110" - a '1' per priority check that passed,
+    // in order, so sorting these strings descending reproduces the
+    // tiered priority (RSI matters most, then BB, then Fib, then Uptrend).
+    return PRIORITY_CHECKS.map(k => (r.checks && r.checks[k] === true) ? '1' : '0').join('');
+  }
+
+  const sorted = [...results].sort((a, b) => {
+    if (!!a.passed !== !!b.passed) return a.passed ? -1 : 1;
+    const keyA = priorityKey(a);
+    const keyB = priorityKey(b);
+    if (keyA !== keyB) return keyA > keyB ? -1 : 1;
+    return a.symbol.localeCompare(b.symbol);
+  });
+
+  for (const r of sorted) {
+    if (r.error) {
+      html += `<tr class="error-row"><td class="symbol">${r.symbol}</td><td colspan="12">${r.error}</td></tr>`;
+      continue;
+    }
+    const statusClass = r.passed ? 'status-pass' : 'status-fail';
+    const scoreText = (r.checks_evaluated_count !== undefined)
+      ? `${r.checks_passed_count}/${r.checks_evaluated_count}`
+      : '';
+    const statusText = r.passed ? `PASS ${scoreText}` : (scoreText || 'fail');
+    html += `<tr>
+      <td class="symbol"><a href="#" class="symbol-link" onclick="openDetail('${r.symbol}'); return false;">${r.symbol}</a></td>
+      <td>$${r.values.last_close ?? '—'}</td>
+      <td class="${statusClass}">${statusText}</td>`;
+    for (const key in CHECK_LABELS) {
+      html += `<td>${checkIcon(r.checks[key])}</td>`;
+    }
+    html += `</tr>`;
+
+    // Detail row
+    const fibText = r.values.fib_bounce_level
+      ? `bounced off ${(parseFloat(r.values.fib_bounce_level) * 100).toFixed(1)}% @ $${r.values.fib_bounce_price}`
+      : 'no recent bounce detected';
+    html += `<tr><td colspan="13" style="border-bottom: 1px solid var(--line); padding-top:0;">
+      <details>
+        <summary>raw values</summary>
+        <div class="detail-grid">
+          <div>RSI(14): ${r.values.rsi ?? '—'}</div>
+          <div>50 SMA: ${r.values.sma50 ?? '—'}</div>
+          <div>200 SMA: ${r.values.sma200 ?? '—'}</div>
+          <div>20d Avg Vol: ${r.values.avg_volume_20d?.toLocaleString() ?? '—'}</div>
+          <div>IV (near): ${r.values.iv_current_pct ?? '—'}%</div>
+          <div>IV (far): ${r.values.iv_long_term_pct ?? '—'}%</div>
+          <div>Bid/Ask tight: ${r.values.bid_ask_tight ?? 'no data'}</div>
+          <div>Fib swing: $${r.values.fib_swing_low ?? '—'} – $${r.values.fib_swing_high ?? '—'}</div>
+          <div>Fib bounce: ${fibText}</div>
+          <div>Analyst Buy%: ${r.values.analyst_buy_pct ?? '—'}% (${r.values.analyst_total_ratings ?? 0} ratings)</div>
+        </div>
+        <a href="#" class="detail-link" onclick="openDetail('${r.symbol}'); return false;">View full chart &amp; breakdown →</a>
+      </details>
+    </td></tr>`;
+  }
+
+  html += '</tbody></table>';
+  resultsEl.innerHTML = html;
+}
+
+document.getElementById('symbols').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) runScan();
+});
+
+// ---------------------------------------------------------------------------
+// Detail modal: chart + full criteria breakdown for a single symbol
+// ---------------------------------------------------------------------------
+
+async function openDetail(symbol) {
+  const backdrop = document.getElementById('modalBackdrop');
+  const body = document.getElementById('modalBody');
+  const title = document.getElementById('modalTitle');
+  const subtitle = document.getElementById('modalSubtitle');
+
+  title.textContent = symbol;
+  subtitle.textContent = '';
+  body.innerHTML = '<div class="modal-loading">Loading price history and criteria…</div>';
+  backdrop.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  try {
+    const resp = await fetch(`/api/detail/${encodeURIComponent(symbol)}`);
+    const data = await resp.json();
+
+    if (data.error) {
+      body.innerHTML = `<div class="modal-loading">${data.error}</div>`;
+      return;
+    }
+
+    const s = data.screening;
+    subtitle.textContent = s.values?.last_close ? `Last close: $${s.values.last_close}` : '';
+
+    let html = '';
+
+    if (data.chart) {
+      html += '<div class="modal-section">';
+      html += '<div class="modal-section-title">Price, Bollinger Bands &amp; Fibonacci Levels (6mo)</div>';
+      html += buildChartSVG(data.chart);
+      html += `<div class="chart-legend">
+        <span><span class="legend-line" style="background:var(--text);"></span> Close</span>
+        <span><span class="legend-line" style="background:var(--missing); opacity:0.6;"></span> Bollinger Bands (20d)</span>
+        <span><span class="legend-line" style="background:var(--pass); opacity:0.7; border-top:1px dashed var(--pass);"></span> Fib 38.2 / 50 / 61.8%</span>
+      </div>`;
+      html += '</div>';
+    }
+
+    if (data.suggested_strikes) {
+      html += buildStrikesSection(data.suggested_strikes);
+    }
+
+    if (s.checks) {
+      html += '<div class="modal-section">';
+      html += '<div class="modal-section-title">Criteria Breakdown (' + (s.checks_passed_count ?? '—') + ' / ' + (s.checks_evaluated_count ?? '—') + ' evaluated, need 8 of 10 to pass)</div>';
+      html += '<table class="criteria-table">';
+      for (const key in CHECK_LABELS) {
+        const val = s.checks[key];
+        html += `<tr><td>${CHECK_LABELS[key]}</td><td>${checkIcon(val)} ${val === true ? 'Pass' : val === false ? 'Fail' : 'No data'}</td></tr>`;
+      }
+      html += '</table>';
+      html += '</div>';
+    }
+
+    if (s.values) {
+      html += '<div class="modal-section">';
+      html += '<div class="modal-section-title">Raw Values</div>';
+      const v = s.values;
+      const fibText = v.fib_bounce_level
+        ? `bounced off ${(parseFloat(v.fib_bounce_level) * 100).toFixed(1)}% @ $${v.fib_bounce_price}`
+        : 'no recent bounce detected';
+      html += '<table class="criteria-table">';
+      html += `<tr><td>RSI(14)</td><td>${v.rsi ?? '—'}</td></tr>`;
+      html += `<tr><td>50-day SMA</td><td>${v.sma50 ?? '—'}</td></tr>`;
+      html += `<tr><td>200-day SMA</td><td>${v.sma200 ?? '—'}</td></tr>`;
+      html += `<tr><td>20d Avg Volume</td><td>${v.avg_volume_20d?.toLocaleString() ?? '—'}</td></tr>`;
+      html += `<tr><td>IV (near-term)</td><td>${v.iv_current_pct ?? '—'}%</td></tr>`;
+      html += `<tr><td>IV (longer-term)</td><td>${v.iv_long_term_pct ?? '—'}%</td></tr>`;
+      html += `<tr><td>Bid/Ask spread tight</td><td>${v.bid_ask_tight ?? 'no data'}</td></tr>`;
+      html += `<tr><td>Fib swing range</td><td>$${v.fib_swing_low ?? '—'} – $${v.fib_swing_high ?? '—'}</td></tr>`;
+      html += `<tr><td>Fib bounce</td><td>${fibText}</td></tr>`;
+      html += `<tr><td>Analyst Buy %</td><td>${v.analyst_buy_pct ?? '—'}% (${v.analyst_total_ratings ?? 0} ratings)</td></tr>`;
+      html += '</table>';
+      html += '</div>';
+    }
+
+    body.innerHTML = html;
+  } catch (e) {
+    body.innerHTML = `<div class="modal-loading">Failed to load: ${e.message}</div>`;
+  }
+}
+
+function closeDetail() {
+  document.getElementById('modalBackdrop').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeDetail();
+});
+
+function buildStrikesSection(strikes) {
+  let html = '<div class="modal-section">';
+  html += '<div class="modal-section-title">Suggested Diagonal Strikes (rough estimate)</div>';
+  html += `<div class="data-note" style="margin-top:0; margin-bottom:12px;">
+    ⚠ ${strikes.note || 'Deltas approximated from Yahoo IV via Black-Scholes — not real broker greeks. Verify before trading.'}
+  </div>`;
+
+  if (strikes.error) {
+    html += `<div class="empty-state" style="padding:20px;">${strikes.error}</div>`;
+    html += '</div>';
+    return html;
+  }
+
+  function legRow(label, leg) {
+    if (!leg) return `<tr><td>${label}</td><td colspan="5">No data</td></tr>`;
+    if (leg.error) return `<tr><td>${label}</td><td colspan="5">${leg.error}</td></tr>`;
+    const bandIcon = leg.in_target_band
+      ? '<span class="check-icon check-pass">●</span>'
+      : '<span class="check-icon check-missing">●</span>';
+    return `<tr>
+      <td>${label}</td>
+      <td>$${leg.strike}</td>
+      <td>${leg.expiration} (${leg.dte}d)</td>
+      <td>~${leg.est_delta} ${bandIcon}</td>
+      <td>$${leg.bid ?? '—'} / $${leg.ask ?? '—'}</td>
+      <td>IV ${leg.iv_pct ?? '—'}%</td>
+    </tr>`;
+  }
+
+  html += '<table class="criteria-table">';
+  html += '<tr><td style="color:var(--text-dim);">Leg</td><td style="color:var(--text-dim);">Strike</td><td style="color:var(--text-dim);">Expiration</td><td style="color:var(--text-dim);">Est. Δ</td><td style="color:var(--text-dim);">Bid/Ask</td><td style="color:var(--text-dim);">IV</td></tr>';
+  html += legRow('SELL (short)', strikes.short_leg);
+  html += legRow('BUY (long)', strikes.long_leg);
+  html += '</table>';
+
+  if (strikes.strike_width !== undefined) {
+    const widthIcon = strikes.within_max_width
+      ? '<span class="check-icon check-pass">●</span> within $7 max'
+      : '<span class="check-icon check-fail">●</span> exceeds $7 max';
+    html += `<div class="scan-meta" style="margin-top:8px; margin-bottom:0;">Strike width: $${strikes.strike_width} — ${widthIcon}</div>`;
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function buildChartSVG(chart) {
+  const W = 800, H = 280, padL = 50, padR = 16, padT = 16, padB = 28;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+
+  const closes = chart.closes;
+  const n = closes.length;
+  if (n === 0) return '<div class="empty-state">No chart data.</div>';
+
+  // Collect all values that need to fit on the y-axis: closes, bollinger
+  // bands (where present), and fib levels (drawn as horizontal lines).
+  let allVals = [...closes];
+  chart.bollinger.forEach(b => {
+    if (b.lower != null) allVals.push(b.lower, b.upper);
+  });
+  if (chart.fib_levels) {
+    Object.values(chart.fib_levels).forEach(v => allVals.push(v));
+  }
+  const minV = Math.min(...allVals);
+  const maxV = Math.max(...allVals);
+  const range = (maxV - minV) || 1;
+
+  const xAt = (i) => padL + (i / (n - 1)) * innerW;
+  const yAt = (v) => padT + innerH - ((v - minV) / range) * innerH;
+
+  const closePath = closes.map((c, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i).toFixed(1)} ${yAt(c).toFixed(1)}`).join(' ');
+
+  // Bollinger band paths (skip leading nulls until the 20-day window fills)
+  let upperPts = [], lowerPts = [];
+  chart.bollinger.forEach((b, i) => {
+    if (b.upper != null) upperPts.push(`${xAt(i).toFixed(1)},${yAt(b.upper).toFixed(1)}`);
+    if (b.lower != null) lowerPts.push(`${xAt(i).toFixed(1)},${yAt(b.lower).toFixed(1)}`);
+  });
+  const upperPath = upperPts.length ? `M ${upperPts.join(' L ')}` : '';
+  const lowerPath = lowerPts.length ? `M ${lowerPts.join(' L ')}` : '';
+
+  // Note: colors below use hardcoded hex values matching the page's CSS
+  // variables, set via the `style` attribute rather than bare presentation
+  // attributes (e.g. stroke="var(--pass)"). var() resolution in bare SVG
+  // presentation attributes is inconsistent across browsers (notably
+  // Chromium); style attributes reliably participate in the CSS cascade.
+  const COL_PASS = '#5fb87a';
+  const COL_MISSING = '#c9a23e';
+  const COL_TEXT = '#e8ebe6';
+  const COL_TEXT_DIM = '#8a948b';
+  const FONT_MONO = "'IBM Plex Mono','SFMono-Regular',Consolas,monospace";
+
+  // Fib level horizontal lines
+  let fibLines = '';
+  if (chart.fib_levels) {
+    const labelLevels = { '0.382': '38.2%', '0.5': '50%', '0.618': '61.8%' };
+    for (const key in labelLevels) {
+      const price = chart.fib_levels[key];
+      if (price == null) continue;
+      const y = yAt(price).toFixed(1);
+      fibLines += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" style="stroke:${COL_PASS}; stroke-width:1; stroke-dasharray:4,3; opacity:0.6;" />`;
+      fibLines += `<text x="${W - padR - 4}" y="${y - 3}" text-anchor="end" style="font-family:${FONT_MONO}; font-size:9px; fill:${COL_PASS}; opacity:0.8;">${labelLevels[key]}</text>`;
+    }
+  }
+
+  // Y-axis labels (min, mid, max)
+  const yLabels = [minV, (minV + maxV) / 2, maxV].map(v => {
+    const y = yAt(v).toFixed(1);
+    return `<text x="${padL - 8}" y="${parseFloat(y) + 3}" text-anchor="end" style="font-family:${FONT_MONO}; font-size:10px; fill:${COL_TEXT_DIM};">$${v.toFixed(0)}</text>`;
+  }).join('');
+
+  // X-axis labels (first and last date)
+  const firstDate = chart.dates[0];
+  const lastDate = chart.dates[n - 1];
+  const xLabels = `
+    <text x="${padL}" y="${H - 8}" text-anchor="start" style="font-family:${FONT_MONO}; font-size:10px; fill:${COL_TEXT_DIM};">${firstDate}</text>
+    <text x="${W - padR}" y="${H - 8}" text-anchor="end" style="font-family:${FONT_MONO}; font-size:10px; fill:${COL_TEXT_DIM};">${lastDate}</text>
+  `;
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; background:var(--bg); border:1px solid var(--line); border-radius:4px;">
+    ${fibLines}
+    ${upperPath ? `<path d="${upperPath}" fill="none" style="stroke:${COL_MISSING}; stroke-width:1; opacity:0.5;" />` : ''}
+    ${lowerPath ? `<path d="${lowerPath}" fill="none" style="stroke:${COL_MISSING}; stroke-width:1; opacity:0.5;" />` : ''}
+    <path d="${closePath}" fill="none" style="stroke:${COL_TEXT}; stroke-width:1.5;" />
+    ${yLabels}
+    ${xLabels}
+  </svg>`;
+}
+</script>
+</body>
+</html>
